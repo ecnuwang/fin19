@@ -1,0 +1,543 @@
+---
+title: "事件研究实例"
+author: "汪小圈"
+date: "2019/6/12"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+# 导言
+
+## 目标
+
+- 针对2012年3月14日薄熙来事件进行事件研究，考察政治不确定性对企业的影响
+
+## 数据来源
+
+CSMAR(国泰安) http://cn.gtadata.com/
+
+- 股票市场信息: 股票市场系列 -> 股票市场交易 -> 个股交易数据 -> 日个股回报率文件
+
+- 无风险利率: 股票市场系列 -> 股票市场交易 -> 汇率及利率 -> 无风险利率文件
+
+- 多因子: 因子研究系列 -> Fama-French因子 -> 五因子模型指标(日)
+
+
+## 选取样本与变量
+
+- 2006/1-2012/12, 上海与深圳A股上市企业
+
+- 股票市场信息
+
+    - 个股交易信息: 考虑现金红利再投资的日个股回报率、日个股流通市值
+    
+    - 无风险利率: 日度化无风险利率
+    
+    - 因子: 市场风险溢价因子(总市值加权)
+
+- 政治不确定性的度量：2007-2011年央行宣布调整存款准备金率时上市公司的股票市场反应CAR
+
+## 短期事件研究步骤
+
+1. 事件定义
+2. 样本筛选
+3. 异常收益率
+4. 估计步骤
+5. 检验步骤
+6. 解释结果
+
+## 分解目标
+
+- Step 1: 定义事件，并选取合适的时间窗口
+
+- Step 2: 选取A股非金融上市公司，计算每家企业的政治敏感程度
+
+- Step 3: 处理上市公司日度股票信息，用事件前的股票信息估计预期收益率
+
+- Step 4: 对每家企业计算异常收益率与累计异常收益率(CAR)
+
+- Step 5: 将企业根据政治敏感度分类，分别计算平均累计异常收益率(CAR)
+
+- Step 6: 使用回归分析方法考察累计异常收益率(CAR)与政治敏感度间的关系
+
+
+# 准备工作
+```{r warning=FALSE, message=FALSE}
+# 加载需要的R包
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(broom)
+library(kableExtra)
+library(stargazer)
+library(lmtest) #coeftest
+library(sandwich) #NeweyWest
+```
+
+- 保存R Script, 并修改工作目录到R Script所在的文件夹(`Session -> Set Working Directory -> To Source File Location`)
+
+- 所有数据都保存在该文件夹中的子文件夹"Event_data"中
+
+
+# 事件定义
+
+- 事件：薄熙来事件
+
+- 事件日：2012年3月14日
+
+- 事件窗口：[-1,1]日，即2012年3月13日至2012年3月15日
+
+- 估计窗口：2011年8月7日至2012年2月6日
+
+
+# 样本筛选
+
+## 筛选非金融上市公司
+```{r}
+cominfo <- read_excel("Event_data/TRD_Co.xlsx")
+
+comA <- cominfo %>% 
+  filter(
+    Indcd != "0001",
+    Markettype == 1 | Markettype == 4 | Markettype == 16
+  )
+```
+
+## 合并股票交易数据
+
+```{r}
+nrrate_d <- read_excel("Event_data/TRD_Nrrate.xlsx") %>%
+  mutate(rf = Nrrdaydt/100,
+         Clsdt = ymd(Clsdt)) %>%
+  select(Clsdt, rf)
+
+fac_d <- read_excel("Event_data/STK_MKT_ThrfacDay.xlsx") %>%
+  filter(MarkettypeID == "P9709") %>%
+  mutate(
+    TradingDate = ymd(TradingDate)
+  ) %>%
+  select(TradingDate, RiskPremium2)
+
+# read stock daily return
+read_file <- function(df){
+  read_excel(df) %>%
+    filter(Markettype == 1 | Markettype == 4 | Markettype == 16) %>%
+    select(Stkcd, Trddt, Dretwd, Dsmvtll) %>%
+    mutate(
+      Trddt = ymd(Trddt)
+    )
+}
+
+# read and merge with factors and risk-free rate
+stkdaily <- tibble(
+  name = dir(path = "D:/Qsync/Courses/金融研究方法/2019本科/上机课/T4_Event/Event_data", pattern = "TRD_Dalyr0")
+) %>%
+  mutate(
+    f = str_c("D:/Qsync/Courses/金融研究方法/2019本科/上机课/T4_Event/Event_data", name, sep = "/"),
+    data = f %>% map(read_file)
+  ) %>%
+  unnest(data) %>%
+  select(-name, -f) %>%
+  left_join(nrrate_d, by = c("Trddt" = "Clsdt")) %>%
+  left_join(fac_d, by = c("Trddt" = "TradingDate")) %>%
+  mutate(exret = Dretwd - rf) %>% 
+  semi_join(comA)
+```
+
+
+# 异常收益率
+
+预期收益率模型选择市场模型，利用估计窗口的数据（2011年8月7日至2012年2月6日）, 对下面方程中的参数 $\alpha_i, \beta_i$ 进行OLS估计
+
+$$R_{it} = \alpha_i + \beta_i R_{mt} + \epsilon_{it}$$
+
+计算事件窗口 $t \in [-1, 1]$ 的异常收益率
+
+$$\widehat{AR}^*_{it} = R^*_{it} - \hat{\alpha}_i - \hat{\beta}_i R^*_{mt}$$
+
+## 定义事件日，并计算相对日期
+```{r}
+stk_event <- stkdaily %>% 
+  filter(!is.na(exret),
+         Trddt >= as.Date("2012-3-13"), 
+         Trddt <= as.Date("2012-3-15")) %>% 
+  mutate(
+    event = case_when(Trddt == as.Date("2012-3-14") ~ 0,
+                      Trddt == as.Date("2012-3-13") ~ -1,
+                      TRUE ~ 1)
+  ) %>% 
+  group_by(Stkcd) %>% 
+  filter(n() >= 1)
+
+stk_est <- stkdaily %>% 
+  filter(!is.na(exret),
+         Trddt >= as.Date("2011-8-7"), 
+         Trddt <= as.Date("2012-2-6")) %>% 
+  mutate(event = -99) %>% 
+  group_by(Stkcd) %>% 
+  filter(n() >= 60) %>% 
+  semi_join(stk_event, by = c("Stkcd" = "Stkcd"))
+
+stk_event <- stk_event %>% 
+  semi_join(stk_est, by = c("Stkcd" = "Stkcd"))
+  
+eventdata <- bind_rows(stk_event, stk_est) %>% 
+  arrange(Stkcd, Trddt) %>% 
+  ungroup()
+```
+
+## 计算预期收益率与异常收益率
+```{r}
+# Market model
+AR <- eventdata %>%
+  select(Stkcd, event, exret, RiskPremium2) %>% 
+  nest(-Stkcd) %>% 
+  mutate(
+    model = data %>% map(filter, event == -99) %>% map(~lm(exret ~ RiskPremium2, .)),
+    pred_data = data %>% map(filter, event >= -1, event <= 1),
+    pred = map2(model, pred_data, predict),
+    event = data %>% map(filter, event >= -1, event <= 1) %>% map("event"),
+    ret = data %>% map(filter, event >= -1, event <= 1) %>% map("exret")
+  ) %>% 
+  select(Stkcd, event, pred, ret) %>% 
+  unnest() %>% 
+  mutate(
+    ret = as.numeric(ret),
+    AR = ret - pred
+  )
+
+AR %>% 
+  group_by(event) %>% 
+  summarise_at(c("AR"), funs(mean, median, min, max), na.rm = T) %>% 
+  kable(digits = 4) %>% 
+  kable_styling("striped")
+```
+
+## 计算累计收益率(CAR)
+```{r}
+CAR <- AR %>% 
+  group_by(Stkcd) %>% 
+  mutate(
+    CAR = cumsum(AR)
+  ) 
+
+CAR %>% 
+  group_by(event) %>% 
+  summarise(AAR = mean(AR), ACAR = mean(CAR)) %>% 
+  gather(key, value, AAR:ACAR) %>% 
+  ggplot(aes(x = event, y = value)) +
+  geom_line(aes(color = factor(key, labels = c("AAR", "CAR"))), size = 1.2) +
+  labs(x = "事件窗口", y = "日度收益率", caption = "数据来源: CSMAR", color = "") 
+
+
+# # test on independent events
+# CAR_Var <- eventdata %>%
+#   select(Stkcd, event, exret, RiskPremium2) %>% 
+#   nest(-Stkcd) %>% 
+#   mutate(
+#     model_data = data %>% map(filter, event == -99),
+#     pred_data = data %>% map(filter, event >= -1, event <= 1), 
+#     model = model_data %>% map(~lm(exret ~ RiskPremium2, .)),
+#     sigma = model %>% map(summary) %>% map_dbl("sigma"),
+#     X = model_data %>% map(~model.matrix(exret ~ RiskPremium2, .)),
+#     X_star = pred_data %>%  map(~model.matrix(exret ~ RiskPremium2, .)),
+#     dim_star = X_star %>% map(dim) %>% map_int(1),
+#     V = pmap(list(dim_star, X, X_star, sigma), 
+#              function(dim_star, X, X_star, sigma) 
+#                (diag(dim_star) + X_star %*% solve(t(X) %*% X) %*% t(X_star)) * sigma^2
+#              ),
+#     Var_CAR = V %>% map_dbl(sum)
+#   ) %>% 
+#   select(Stkcd, Var_CAR) %>% 
+#   unnest()
+# 
+# CAR_est <- CAR %>% 
+#   filter(event == 1) %>% 
+#   left_join(CAR_Var) %>% 
+#   mutate(
+#     SCAR = CAR/sqrt(Var_CAR)
+#   )
+# 
+# CAR_sd <- CAR_est %>% 
+#   ungroup() %>% 
+#   summarise(
+#     ACAR = mean(CAR),
+#     se_ACAR = sqrt(sum(Var_CAR)/length(CAR)^2),
+#     J1 = ACAR/se_ACAR,
+#     ASCAR = mean(SCAR),
+#     se_ASCAR = sqrt((118-2)/(length(CAR)*(118-4))),
+#     J2 = ASCAR/se_ASCAR
+#   )
+# 
+# CARtest <- lm(CAR ~ 1, CAR_est)
+# 
+# SCARtest <- lm(SCAR ~ 1, CAR_est)
+#   
+# stargazer(CARtest, SCARtest, type = "html", 
+#           se = list(CARtest = CAR_sd$se_ACAR, SCARtest = CAR_sd$se_ASCAR), 
+#           style = "aer", omit.table.layout = "n", omit.stat = c("rsq", "adj.rsq", "ser"))
+```
+
+
+# 政策不确定性与累计超额收益率
+
+## 计算企业对政治的敏感程度
+
+- 计算2007-2011年准备金率调整对企业带来的股票市场影响（CAR(-1,1)）
+
+- 针对每次准备金调整，对CAR进行排序，将排序变为[0,1]间的变量，即排序/(企业总数+1)
+
+- 对不同次准备金调整进行加权平均，权重为事件窗口整个股票市场收益率的绝对值
+
+```{r}
+# read RRR adjustment dates (2007-2011)
+RRR <- read_excel("Event_data/RRR.xlsx") %>% 
+  mutate(AnnDate = ymd(AnnDate))
+
+trddate <- stkdaily %>% 
+  distinct(Trddt) %>% 
+  mutate(n = row_number(Trddt)) %>% 
+  filter(Trddt <= as.Date("2011-12-31"))
+
+# select stock info between a trading date range
+get_date <- function(date, pre, post){
+  
+  index <- trddate %>% 
+    mutate(
+      diff = Trddt - date
+    ) %>% 
+    filter(diff >= 0) %>% 
+    filter(diff == min(diff)) %>% 
+    pull("n")
+  
+  trddate %>% 
+    filter(n - index >= pre, n - index <= post) %>% 
+    mutate(
+      event = row_number() + pre - 1
+    )
+
+}
+
+RRR_event <- RRR %>% 
+  mutate(
+    data = AnnDate %>% map(
+      function(d){
+        stkdaily %>% 
+          right_join(get_date(d, -1, 1))
+      }
+      )
+  ) %>% 
+  unnest(data) 
+
+RRR_est <- RRR %>% 
+  mutate(
+    data = AnnDate %>% map(
+      function(d){
+        stkdaily %>% 
+          right_join(get_date(d, -125, -5))
+      }
+      )
+  ) %>% 
+  unnest(data) %>% 
+  group_by(Stkcd, AnnDate) %>% 
+  filter(n() >= 60) %>% 
+  semi_join(RRR_event, by = c("Stkcd" = "Stkcd", "AnnDate" = "AnnDate"))
+
+RRR_event <- RRR_event %>% 
+  semi_join(RRR_est, by = c("Stkcd" = "Stkcd", "AnnDate" = "AnnDate"))
+  
+RRRdata <- bind_rows(RRR_event, RRR_est)
+
+# 计算每次RRR的CAR
+RRR_CAR <- RRRdata %>%
+  select(Stkcd, AnnDate, event, exret, RiskPremium2) %>% 
+  nest(-Stkcd, -AnnDate) %>% 
+  mutate(
+    model = data %>% map(filter, event <= -5) %>% map(~lm(exret ~ RiskPremium2, .)),
+    pred_data = data %>% map(filter, event >= -1, event <= 1),
+    pred = map2(model, pred_data, predict),
+    event = data %>% map(filter, event >= -1, event <= 1) %>% map("event"),
+    ret = data %>% map(filter, event >= -1, event <= 1) %>% map("exret")
+  ) %>% 
+  select(Stkcd, AnnDate, event, pred, ret) %>% 
+  unnest() %>% 
+  mutate(
+    ret = as.numeric(ret),
+    AR = ret - pred
+  ) %>% 
+  group_by(Stkcd, AnnDate) %>% 
+  mutate(
+    CAR = cumsum(AR)
+  ) %>% 
+  filter(event == 1) %>% 
+  group_by(AnnDate) %>% 
+  mutate(rankr = rank(-CAR)/(n()+1))
+
+weight <- RRR_event %>% 
+  distinct(AnnDate, Trddt, RiskPremium2) %>% 
+  group_by(AnnDate) %>% 
+  mutate(n = row_number(AnnDate)) %>% 
+  select(AnnDate, RiskPremium2, n) %>% 
+  spread(n, RiskPremium2) %>% 
+  mutate(aggret = abs((1+`2`)*(1+`3`) - 1))
+
+RRR_sen <- RRR_CAR %>% 
+  left_join(weight) %>% 
+  group_by(Stkcd) %>% 
+  summarise(sen = weighted.mean(rankr, aggret)) 
+```
+
+## 分组分析
+
+只有一个事件日，不同企业的CAR之间存在相关性
+
+常用方法：使用构造投资组合计算异常收益率的方法来解决这一问题
+
+论文中的方法：
+
+1. 对估计窗口中的每天，计算算数平均异常收益率 $\bar{AR}_t$
+
+2. 计算上述异常收益率的标准差 $Std(\bar{AR})$
+
+3. $Std(\bar{CAR}) = \sqrt{3} \times Std(\bar{AR})$
+
+```{r results='asis'}
+# aggregate into portfolio
+event_grp <- eventdata %>%
+  left_join(RRR_sen) %>% 
+  mutate(grp = ntile(sen, 3)) %>% 
+  filter(!is.na(grp)) %>% 
+  group_by(grp, Trddt, event) %>% 
+  summarise_at(vars(exret, RiskPremium2), mean, na.rm = T) %>% 
+  select(grp, event, exret, RiskPremium2) 
+
+AR_grp <- event_grp %>% 
+  group_by(grp) %>% 
+  nest() %>% 
+  mutate(
+    model = data %>% map(filter, event == -99) %>% map(~lm(exret ~ RiskPremium2, .)),
+    pred_data = data %>% map(filter, event >= -1, event <= 1),
+    pred = map2(model, pred_data, predict),
+    event = data %>% map(filter, event >= -1, event <= 1) %>% map("event"),
+    ret = data %>% map(filter, event >= -1, event <= 1) %>% map("exret")
+  ) %>% 
+  select(grp, event, pred, ret) %>% 
+  unnest() %>% 
+  mutate(
+    ret = as.numeric(ret),
+    AR = ret - pred
+  ) 
+
+CAR_grp <- AR_grp %>% 
+  group_by(grp) %>% 
+  mutate(
+    CAR = cumsum(AR)
+  ) %>% 
+  filter(event == 1)
+
+# portfolio method
+CAR_Var1 <- event_grp %>% 
+  group_by(grp) %>% 
+  nest() %>% 
+  mutate(
+    model_data = data %>% map(filter, event == -99),
+    pred_data = data %>% map(filter, event >= -1, event <= 1),
+    model = model_data %>% map(~lm(exret ~ RiskPremium2, .)),
+    sigma = model %>% map(summary) %>% map_dbl("sigma"),
+    X = model_data %>% map(~model.matrix(exret ~ RiskPremium2, .)),
+    X_star = pred_data %>%  map(~model.matrix(exret ~ RiskPremium2, .)),
+    dim_star = X_star %>% map(dim) %>% map_int(1),
+    V = pmap(list(dim_star, X, X_star, sigma),
+             function(dim_star, X, X_star, sigma)
+               (diag(dim_star) + X_star %*% solve(t(X) %*% X) %*% t(X_star)) * sigma^2
+             ),
+    Var_CAR = V %>% map_dbl(sum)
+  ) %>%
+  select(grp, Var_CAR) %>%
+  unnest()
+
+# method used in the paper
+CAR_Var2 <- eventdata %>%
+  select(Stkcd, Trddt, event, exret, RiskPremium2) %>%
+  nest(-Stkcd) %>%
+  mutate(
+    model_data = data %>% map(filter, event == -99),
+    resid = model_data %>% map(~lm(exret ~ RiskPremium2, .)) %>% map(augment),
+    Trddt = data %>% map(filter, event == -99) %>% map("Trddt")
+  ) %>%
+  select(Stkcd, Trddt, resid) %>%
+  unnest() %>% 
+  left_join(RRR_sen) %>% 
+  mutate(grp = ntile(sen, 3)) %>% 
+  filter(!is.na(grp)) %>% 
+  group_by(grp, Trddt) %>% 
+  summarise(AR = mean(`.resid`, na.rm = T)) %>% 
+  group_by(grp) %>% 
+  summarise(std_CAR = sqrt(3)*sd(AR, na.rm = T))
+  
+CAR_est <- CAR_grp %>%
+  left_join(CAR_Var1) %>%
+  left_join(CAR_Var2) %>% 
+  mutate(
+    J1_1 = CAR/sqrt(Var_CAR),
+    J1_2 = CAR/std_CAR
+  )
+
+CAR_est %>%
+  select(grp, CAR, Var_CAR, J1_1, std_CAR, J1_2) %>% 
+  kable(digits = 5) %>% 
+  kable_styling("striped")
+```
+
+## 回归分析
+
+```{r results='asis'}
+# calculate firm-level controls: size, bm, leverage
+combas <- read_excel("Event_data/FS_Combas.xlsx", col_names = c("Stkcd", "Accper", "Typrep", "Asset", "Liability", "Equity"), skip = 3) %>% 
+  mutate(Accper = ymd(Accper)) %>% 
+  filter(year(Accper) == 2011, month(Accper) == 12, Typrep == "A")
+
+CAR_control <- stkdaily %>% 
+  filter(Trddt == as.Date("2012-3-7")) %>% 
+  left_join(combas) %>% 
+  mutate(
+    lnSZ = log(Dsmvtll),
+    BM = Equity / Dsmvtll,
+    leverage = Liability / Asset
+  ) %>% 
+  select(Stkcd, lnSZ, BM, leverage)
+
+# winsorize at 0.5% and 99.5%
+CAR_control <- CAR_control %>%
+  mutate_if(is.numeric,
+            ~ case_when(
+              . < quantile(., 0.005, na.rm = T) ~ quantile(., 0.005, na.rm = T),
+              . > quantile(., 0.995, na.rm = T) ~ quantile(., 0.995, na.rm = T),
+              TRUE ~ as.numeric(.)),
+            na.rm = TRUE)
+
+# merge with CAR and sensitivity data
+CAR_reg <- CAR %>%
+  left_join(RRR_sen) %>% 
+  left_join(CAR_control) %>% 
+  mutate(
+    lnBM = if_else(BM < 0, NA_real_, log(BM))
+  )
+
+# run regression
+CARreg <- lm(CAR ~ sen + lnSZ + lnBM + leverage, CAR_reg)
+
+# show results
+stargazer(CARreg, type = "html", 
+          style = "aer", omit.table.layout = "n", omit.stat = c("rsq", "ser"))
+```

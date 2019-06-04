@@ -1,0 +1,86 @@
+---
+title: "金融研究方法"
+author: "汪小圈 (xqwang@jjx.ecnu.edu.cn)"
+output: html_document
+---
+
+## 课程通知
+
+- 后续课程大部分为上机课，请各位同学带好电脑.
+
+- 6月26日为课程期末考察，请各位同学根据要求准备10分钟口头报告，并在6月12日前邮件告诉我选择报告文献或者研究计划，如果报告的是文献，还需提供文献标题。
+
+## 课件
+
+- [课程介绍](ClassSlide_FinResearch.html)
+
+- 中国金融行业发展
+
+    - 回顾中国金融行业发展 [(1)](Topic1_FinInd/ClassSlide_FinInd1.html) [(2)](Topic1_FinInd/ClassSlide_FinInd2.html)
+    
+    - 中国金融上市公司概览 [(R code)](Topic1_FinInd/R_FinInd.html) [(data)](Topic1_FinInd/FinInd_data.zip)
+    
+    - [作业1要求](Topic1_FinInd/HW1.pdf) 截止: 2019-03-27
+
+- 中国债务问题
+
+    - [中国债务现状](Topic2_Debt/ClassSlide_Debt1.html)
+    
+    - 僵尸企业 [(简介)](Topic2_Debt/ClassSlide_Debt2.html) [(R code)](Topic2_Debt/R_Zombie.html) [(data)](Topic2_Debt/Zombie_data.zip)
+    
+    - [作业2要求](Topic2_Debt/HW2.pdf) 截止: 2019-04-25
+
+- 中国股票市场异象
+
+    - [实证资产定价](Topic3_Anomaly/ClassSlide_EmpAP.html)
+    
+    - 股票市场异象 [(介绍)](Topic3_Anomaly/ClassSlide_Anomaly.html) [(R code)](Topic3_Anomaly/R_Anomaly.html) [(data)](Topic3_Anomaly/Anomaly_data.zip)
+    
+    - [作业3要求](Topic3_Anomaly/HW3.pdf) 截止: 2019-06-05
+  
+- 事件研究
+
+    - 事件研究方法与实例 [(介绍)](Topic4_Event/ClassSlide_Event.html) [(R code)](Topic4_Event/R_Event.html) [(data)](Topic4_Event/Event_data.zip)
+    
+    - [作业4要求](Topic4_Event/HW4.pdf) [(公司所在地数据)](Topic4_Event/data/location.xlsx) 截止：2019-07-03
+
+## 期末报告文献列表
+
+[期末报告要求](ref/final.pdf)
+
+1. [金融行业发展](ref/reference1.pdf)
+
+2. [债务问题](ref/reference2.pdf)
+
+3. [股票市场异象](ref/reference3.pdf)
+
+4. [事件研究](ref/reference4.pdf)
+
+## R语言
+
+- [R Tutorial](Rhelp/RTutorial.html) [(data download)](Rhelp/data.zip)
+
+- R Markdown 
+    - [An Example](Rhelp/Rmarkdown_Example.Rmd) 
+    - [Introduction to R Markdown](https://rmarkdown.rstudio.com/lesson-1.html)
+    - [编译中文pdf文档](http://blog.sciencenet.cn/blog-255662-1004201.html)
+
+- [R语言官网(下载安装软件)](https://www.r-project.org/)
+
+- [RStudio Desktop下载](https://www.rstudio.com/products/rstudio/download/)
+
+- [R入门参考书: R for Data Science](http://r4ds.had.co.nz/)
+
+- [R计量分析的参考书: Principles of Econometrics with  R](https://bookdown.org/ccolonescu/RPoE4/)
+
+- R常用速查表(Cheatsheets): 
+    - [RStudio界面及快捷键](Rhelp/rstudio-ide.pdf)
+    - [数据导入(readr, tidyr)](Rhelp/data-import.pdf)
+    - [数据处理(dplyr)](Rhelp/data-transformation.pdf)
+    - [作图(ggplot2)](Rhelp/data-visualization-2.1.pdf)
+    - [多个模型处理(broom)](Rhelp/many-models.pdf)
+    - [数据分析结果输出(stargazer)](Rhelp/stargazer.html)
+    - [文档输出(R Markdown)](Rhlep/rmarkdown-cheatsheet-2.0.pdf)
+    - [其他](https://www.rstudio.com/resources/cheatsheets/)
+
+- [R在线学习网站: DataCamp](https://www.datacamp.com/)

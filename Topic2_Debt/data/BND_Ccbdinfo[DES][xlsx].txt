@@ -1,0 +1,51 @@
+﻿Liscd [债券代码] - 
+Abbrnme [债券简称] - 以深交所、上交所公布为准。
+Bndnme [债券全称] - 以交易所公布为准
+Sctcd [市场代码] - ‘1’表示上海证券交易所；’2’表示深圳证券交易所
+Bndyer [债券年度] - 以YYYY表示
+Varsortcd [品种类别编码] - 1 附息债； 2 贴现债；3 其它
+Varsort [品种类别] - 
+Orgid [发行机构编码] -  
+Conme [发行机构全称] - 
+Udshrcd [可转换股票代码] - 对应的上市公司股票代码
+Currency [币种] - AUD=澳大利亚元，CNY=人民币，EUR=欧元，GBP=英镑，HKD=港币，JPY=日元，SGD=新加坡元，THP=泰株，TWD=台币，USD=美元.
+Acisuquty [实际发行量] - 债券实际发行量指债券发行人发行债券时实际筹集到的资金总量。
+Pooprc [发行价格] - 债券发行价格是指在发行市场（一级市场）上，投资者在购买债券时实际支付的价格
+Ipotype [发行方式] - 
+Term [期限] - 指债券从发行之日起至偿清本息之日止的时间,一般以年为单位。
+Listdt [上市日期] - 开始在交易所进行交易的日期。以YYYY-MM-DD表示
+Ipodt [发行日期] - 以YYYY-MM-DD表示
+Matdt [到期日期] - 偿还本金的日期。以YYYY-MM-DD表示
+Intrdt [计息日期] - 开始计提利息的日期。以YYYY-MM-DD表示
+Stopdt [止息日期] - 以YYYY-MM-DD表示
+Ipaytypcd [付息方式编码] - 1零息； 2周期付息； 3到期一次还本付息； 4 其它
+Ipaytyp [付息方式] - 付息方式一般可分为零息、一次还本付息、周期付息。
+Intrtypcd [计息方式编码] - 1零息；2 固定利率； 3浮动利率 ；4 递进利率；5其它
+Intrtyp [计息方式] - 计息方式一般可分为零息、固定利息、浮动利息、递进利息
+Pintrt [年付息次数] - 
+Intrrate [票面利率] - 指债券发行者预计一年内向投资者支付的利息占票面金额的比率。
+Bemkrate [基准利率 (%)] - 
+Basrted [基本利差] - 
+Parval [面值] - 指设定的票面金额代表发行人借入并且承诺于未来某一特定日期偿付给债券持有人的金额，其总和就是本金。
+Crdrate [信用等级] - 
+Cnvtsdt [转股起始日期] - 以YYYY-MM-DD表示。
+Cnvtedt [转股截止日期] - 以YYYY-MM-DD表示。
+Cnvtprc [初始转股价格] - 
+Cnvtpadcls [转股价格调整条款] - 未公布用’ N/A ‘表示
+Dnprccls [转股价向下修正条款] - 未公布用’ N/A ‘表示
+Crdeem [可赎回性] - Y表示可赎回,N表示不可赎回
+Rpchcls [赎回条款] - 未公布用’ N/A ‘表示
+Rdmsdt [可赎回起始日期] - 以YYYY-MM-DD表示。
+Rdmedt [可赎回截止日期] - 以YYYY-MM-DD表示。
+Rdmcondion [赎回条件] - 未公布用’ N/A ‘表示
+Rdemprc [赎回价格] - 未公布用’ N/A ‘表示
+Crtsell [可回售性] - Y表示可回售,N表示不可回售
+Rdmcls [回售条款] - 未公布用’ N/A ‘表示
+Rtsellsdt [回售起始日期] - 以YYYY-MM-DD表示
+Rtsellcodion [回售条件] - 未公布用’ N/A ‘表示
+Rtsellprc [回售价格] - 未公布用’ N/A ‘表示
+Atrtsell [附加回售条款] - 未公布用’ N/A ‘表示
+Epntustus [资信状况] - 未公布用’ N/A ‘表示
+Rpdbstp [偿债措施] - 未公布用’ N/A ‘表示
+Iallwnscls [补偿利息条款] - 未公布用’ N/A ‘表示
+Rtselledt [回售截止日期] - 以YYYY-MM-DD表示

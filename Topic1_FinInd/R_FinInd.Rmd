@@ -1,0 +1,192 @@
+---
+title: "中国金融上市公司概览"
+author: "汪小圈"
+date: "2019/3/20"
+output:
+  html_document:
+    highlight: tango
+    mathjax: null
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+# knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+```
+
+# 导言
+
+## 目标
+
+- 画出A股上市金融类企业根据子行业分类的利润总额
+
+- 画出A股上市银行业企业不同收入来源的收入总额
+
+## 数据来源
+
+CSMAR(国泰安) http://cn.gtadata.com/
+
+- 基本信息: 股票市场系列 -> 股票市场交易 -> 基本数据 -> 公司文件
+
+- 财务数据: 公司研究系列 -> 财务报表 -> 利润表
+
+
+## 选取样本与变量
+
+- 1992-2017年, 上海与深圳A股上市的金融类企业
+
+- 基本信息: 行业类别、市场类型
+
+- 财务数据
+    
+    - 利润表: 营业总收入、利润总额、利息净收入、手续费及佣金净收入
+
+## 分解目标
+
+- Step 1: 选取利润表中的年报和合并报表
+
+- Step 2: 选取A股上市公司，通过行业分类找出金融行业
+
+- Step 3: 合并上市公司基本信息与利润表
+
+- Step 4: 计算作图所需的描述性统计量
+
+- Step 5: 作图
+
+
+# 准备工作
+```{r warning=FALSE}
+# 加载需要的R包
+library(tidyverse)
+library(readxl)
+library(lubridate)
+```
+
+- 保存R Script, 并修改工作目录到R Script所在的文件夹(`Session -> Set Working Directory -> To Source File Location`)
+
+- 所有数据都保存在该文件夹中的子文件夹"FinInd_data"中
+
+
+# 导入数据
+```{r warning=FALSE}
+# 基本信息
+cominfo <- read_excel("FinInd_data/TRD_Co.xlsx")
+glimpse(cominfo)
+
+# 利润表
+comins <- read_excel("FinInd_data/FS_Comins.xlsx", col_names = c("Stkcd", "Accper", "Typrep", "sales", "interest", "interim", "profit"), skip = 3)
+head(comins)
+```
+
+
+# 整理(了解)数据
+
+## 初步筛选
+```{r}
+comins <- comins %>% 
+  mutate(
+    Accper = ymd(Accper),
+    year = year(Accper)
+    ) %>% 
+  filter(month(Accper) == 12, Typrep == "A", year >= 1992, year <= 2017)
+```
+
+## 筛选A股企业
+```{r}
+cominfo %>% 
+  count(Markettype)
+
+# 筛选A股企业
+com_A <- cominfo %>% 
+  filter((Markettype == 1 | Markettype == 4 | Markettype == 16))
+```
+
+## 找出金融类企业
+```{r}
+com_A %>% 
+  count(Indcd, Indnme)
+
+com_fin <- com_A %>% 
+  filter(Indcd == "0001")
+
+com_fin %>% 
+  count(Nindcd, Nindnme)
+```
+
+
+## 合并数据集
+
+- Step 1: 保留利润表中的A股企业
+```{r}
+tmp1 <- com_A %>% 
+  left_join(comins)
+
+tmp1
+```
+
+- Step 2: 处理可能的极端情况
+```{r}
+tmp2 <- tmp1 %>% 
+  filter(sales > 0)
+
+# 查看被删样本
+tmp1 %>% 
+  anti_join(tmp2)
+```
+
+
+合并结果存储在`comdata`中
+```{r}
+comdata <- com_A %>% 
+  left_join(comins) %>% 
+  filter(sales > 0) 
+```
+
+# 作图
+
+## 构造变量
+
+使用mutate构造所需变量
+```{r}
+comdata_all <- comdata %>% 
+  mutate(
+    findum = if_else(Indcd == "0001", 1, 0)
+  )
+```
+
+## 作图1：A股金融子行业利润总额
+
+计算金融子行业利润总额，并作堆积图
+```{r}
+comsum_fin <- comdata_all %>% 
+  filter(findum == 1) %>% 
+  group_by(year, Nindnme) %>% 
+  summarise(ind_profit = sum(profit))
+  
+comsum_fin %>% 
+  ggplot() +
+  geom_area(aes(x = year, y = ind_profit/1e12, fill = Nindnme)) +
+  labs(title = "A股金融类上市企业利润分布", subtitle = "1992-2017年", x = "", y = "金融子行业利润总额(万亿元)", caption = "数据来源: CSMAR", fill = "金融子行业") +
+  scale_x_continuous(breaks = seq(1992, 2017, 5))
+```
+
+
+## 作图2：银行业上市企业营业收入来源
+
+计算根据营业收入来源计算银行分类收入，并作堆积图
+```{r}
+comsum_bank <- comdata_all %>% 
+  filter(Nindcd == "I01") %>% 
+  group_by(year) %>% 
+  summarise(`利息收入` = sum(interest), `中间业务收入` = sum(interim)) %>% 
+  gather(key, value, `利息收入`, `中间业务收入`) 
+
+comsum_bank%>% 
+  ggplot() +
+  geom_area(aes(x = year, y = value/1e12, fill = key)) +
+  labs(title = "A股银行业上市企业营业收入", subtitle = "1992-2017年", x = "", y = "银行业收入总额(万亿元)", caption = "数据来源: CSMAR", fill = "收入来源") +
+  scale_x_continuous(breaks = seq(1992, 2017, 5))
+```

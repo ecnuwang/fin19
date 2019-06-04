@@ -1,0 +1,560 @@
+---
+title: "R Tutorial"
+author: "汪小圈"
+date: "2019/3/6"
+output:
+  html_document:
+    highlight: tango
+    mathjax: null
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+# knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(gapminder)
+library(knitr)
+```
+
+# 导言
+
+一般数据处理的过程:
+
+![](Rpics/data-science.png)
+
+# 准备工作
+
+## 安装R和RStudio
+
+- R语言官网(下载安装软件): https://www.r-project.org/
+
+- RStudio Desktop下载: https://www.rstudio.com/products/rstudio/download/
+
+## RStudio工作环境
+
+![](Rpics/RStudio_screen_1.PNG)
+
+## 安装加载程序包
+
+选择CRAN: `Tools -> Global Options -> Packages`
+
+```{r eval=FALSE}
+install.packages("tidyverse")
+library(tidyverse)
+
+install.packages("gapminder")
+library(gapminder)
+```
+
+## 改为当前工作目录
+
+`Session -> Set Working Directory -> To Source File Location`
+
+## R Help: `?`
+
+在Console中键入 `? 安装包名/函数名`, 例如`?gapminder`
+
+## 几个有用的快捷键
+
+- 代码补全: `Tab`
+
+- 执行代码: `Ctrl + Enter`
+
+- 注释代码: `Ctrl + Shift + C`
+
+- 获取之前的命令: `Ctrl + Up`
+
+- 赋值运算(<-): `Alt + -`
+
+- Pipe运算: `Ctrl + Shift + M`
+
+- 修改快捷键: `Tools -> Modify Keyboard Shortcuts...`
+
+
+# 读写数据
+
+## 导入数据
+
+CSV文件
+```{r warning=FALSE}
+gapminder1 <- read_csv("data/gapminder1.csv") 
+```
+
+- 变量名
+```{r eval=FALSE}
+gapminder1 <- read_csv("data/gapminder1.csv", col_names = FALSE) # no column name
+gapminder1 <- read_csv("data/gapminder1.csv", col_names = c("country", "continent", "year", "variable", "value"), skip = 1) # change column names, skip the first row
+```
+
+Excel文件(`.xls`, `.xlsx`)
+```{r warning=FALSE}
+library(readxl)
+gapminder1 <- read_excel("data/gapminder1.xlsx")
+```
+
+- 读入特定spreadsheet数据
+```{r eval=FALSE}
+gapminder1 <- read_excel("data/gapminder1.xlsx", sheet = "gapminder1")
+```
+
+## 导出数据
+
+```{r}
+write_csv(gapminder1, "data/gapminder.csv")
+```
+
+
+# 数据处理
+
+## 显示数据
+
+```{r}
+head(gapminder, 10) # 显示前10行数据
+
+print(gapminder)
+
+glimpse(gapminder)
+```
+
+在窗口中显示数据集
+```{r eval=FALSE}
+view(gapminder)
+```
+
+
+## 单表简单操作
+
+### `filter`: 选择行
+
+选择中国的观测值
+```{r}
+filter(gapminder, country == "China")
+```
+
+选择中国以外所有国家的观测值
+```{r}
+filter(gapminder, country != "China")
+```
+
+选择人口大于1亿的国家
+```{r}
+filter(gapminder, pop > 1e8)
+```
+
+选择人口大于1亿, 且平均寿命超过70岁的国家
+```{r}
+filter(gapminder, (pop > 1e8) & (lifeExp >= 70))
+
+filter(gapminder, pop > 1e8, lifeExp >= 70)
+```
+
+选择人口大于1亿, 或平均寿命超过70岁的国家
+```{r}
+filter(gapminder, (pop > 1e8) | (lifeExp >= 70))
+```
+
+### `arrange`: 排序
+
+按照人均GDP顺序排序(从小到大排序)
+```{r}
+arrange(gapminder, gdpPercap)
+```
+
+按照人均GDP逆序排序(从大到小排序)
+```{r}
+arrange(gapminder, desc(gdpPercap))
+```
+
+### `select`: 选择列
+
+```{r}
+select(gapminder, country, continent, year, lifeExp)
+
+select(gapminder, country:lifeExp)
+
+select(gapminder, 1:4)
+
+select(gapminder, -pop, -gdpPercap)
+```
+
+有用的函数:
+
+- `starts_with(), ends_with(), contains()`
+- `matches()`
+- `num_range()`
+
+
+### `mutate`: 增加新变量
+```{r}
+mutate(gapminder,
+    GDP = pop * gdpPercap,
+    logpop = log(pop)
+  )
+```
+
+常用函数:
+
+- 加减乘除, `log(), log10()`
+- `lead(), lag()`
+- `ntile(), dense_rank(), min_rank(), row_number()`
+- `cumsum(), cumprod()`
+- `na_if()`
+- `if_else(), case_when()`
+
+
+### `count`: 汇总统计
+
+每年数据中的国家个数
+```{r}
+count(gapminder, year)
+```
+
+每个大洲中的国家个数 (首先选择不重复的国家观测)
+```{r}
+#1
+tmp <- distinct(gapminder, country, continent)
+count(tmp, continent)
+
+#2
+count(distinct(gapminder, country, continent), continent)
+
+#3 pipe运算
+# x %>% f(y, ...)  :  f(x, y, ...)
+# x %>% f(., y, ...): f(x, y , ...)
+# x %>% f(y, .) : f(y, x)
+
+gapminder %>% 
+  distinct(country, continent) %>% 
+  count(continent)
+```
+
+
+### `summerise`: 描述性统计
+
+计算平均寿命的均值与标准差
+```{r}
+gapminder %>% 
+  summarise(avg_lifeExp = mean(lifeExp), sd_lifeExp = sd(lifeExp))
+```
+
+有用的函数:
+
+- Center: `mean(), median()`
+- Spread: `sd(), IQR(), mad()`
+- Range: `min(), max(), quantile()`
+- Position: `first(), last(), nth()`
+- Count: `n(), n_distinct()`
+- Logical: `any(), all()`
+
+
+### `group_by`: 分组
+
+- 分组后`arrange`
+
+每年按照人均GDP排序
+```{r}
+gapminder %>% 
+  group_by(year) %>% 
+  arrange(gdpPercap, .by_group = TRUE) # .by_group=T 不可缺少, 否则arrange将无视group_by
+```
+
+- 分组后`summarise`
+
+计算每个国家的平均寿命与观测值个数
+```{r}
+gapminder %>% 
+  group_by(country) %>% 
+  summarise(avg_lifeExp = mean(lifeExp), n = n())
+```
+
+- 分组后`filter`&`mutate`
+
+首先筛选观测值超过10个的国家, 然后计算这些国家人均GDP增长率
+```{r}
+gapminder %>% 
+  group_by(country) %>% 
+  filter(n() > 10) %>% 
+  mutate(
+    gdp_growth = gdpPercap / lag(gdpPercap) - 1
+  )
+```
+
+
+## Tidy data
+
+Tidy的要求:
+
+![](Rpics/tidy-1.png)
+
+下面哪个数据集是tidy的?
+
+```{r}
+gapminder
+```
+
+```{r echo=FALSE}
+gapminder1 <- gapminder %>% 
+  gather(key = type, value = count, lifeExp, pop, gdpPercap)
+
+write_csv(gapminder1, "data/gapminder1.csv")
+```
+```{r}
+gapminder1
+```
+
+```{r echo=FALSE}
+gapminder2a <- gapminder %>% 
+  select(country, continent, year, lifeExp) %>% 
+  spread(key = year, value = lifeExp)
+
+write_csv(gapminder2a, "data/gapminder2a.csv")
+
+gapminder2b <- gapminder %>% 
+  select(country, continent, year, pop) %>% 
+  spread(key = year, value = pop)
+
+write_csv(gapminder2b, "data/gapminder2b.csv")
+
+gapminder2c <- gapminder %>% 
+  select(country, continent, year, gdpPercap) %>% 
+  spread(key = year, value = gdpPercap)
+
+write_csv(gapminder2c, "data/gapminder2c.csv")
+```
+```{r}
+gapminder2a # lifeExp
+gapminder2b # pop
+gapminder2c # gdpPercap
+```
+
+### `gather`: 短表变长表
+gapminder2a/2b/2c -> gapminder
+
+![](Rpics/tidy-9.png)
+
+```{r}
+tidy2a <- gather(gapminder2a, key = year, value = lifeExp, `1952`:`2007`)
+
+tidy2b <- gather(gapminder2b, key = year, value = pop, `1952`:`2007`)
+
+tidy2c <- gather(gapminder2c, key = year, value = gdpPercap, `1952`:`2007`)
+
+head(tidy2a, 10)
+```
+
+### `spread`: 长表变短表
+gapminder1 -> gapminder
+
+![](Rpics/tidy-8.png)
+
+```{r}
+spread(gapminder1, key = type, value = count)
+```
+
+
+## 合并数据集
+
+### 纵向合并
+
+```{r}
+bind_rows(gapminder2a, gapminder2b)
+```
+
+### 横向合并: 四种常见合并方式
+
+```{r echo=FALSE, fig.align = "center", out.width=550}
+include_graphics("Rpics/join-venn.png")
+```
+
+合并图示:
+
+```{r echo=FALSE, fig.align = "center", out.width=450}
+include_graphics("Rpics/join-inner.png")
+include_graphics("Rpics/join-outer.png")
+```
+
+例子: 合并数据集tidy2a, tidy2b, tidy2c
+
+```{r}
+tidy <- left_join(tidy2a, tidy2b) %>% 
+  left_join(tidy2c)
+
+head(tidy, 10)
+```
+
+### 过滤合并
+
+`semi_join(x, y)`:
+
+```{r echo=FALSE, fig.align = "center", out.width=350}
+include_graphics("Rpics/join-semi.png")
+```
+
+`anti_join(x, y)`: 
+
+```{r echo=FALSE, fig.align = "center", out.width=350}
+include_graphics("Rpics/join-anti.png")
+```
+
+
+# 作图: `ggplot()`
+
+## 散点图: `geom_point()`
+
+平均寿命与人均GDP的散点图
+```{r fig.align = "center", out.width=600}
+gapminder %>%
+  ggplot(aes(x = gdpPercap, y = lifeExp)) + 
+  geom_point()  # ggplot中的命令用+号连接
+```
+
+分五大洲的散点图
+```{r fig.align = "center", out.width=600}
+gapminder %>%
+  ggplot(aes(x = gdpPercap, y = lifeExp)) + 
+  geom_point(aes(color = continent)) 
+```
+
+## 折线图: `geom_line()`
+
+中国平均寿命的时间序列图
+```{r fig.align = "center", out.width=600}
+gapminder %>%
+  filter(country == "China") %>% 
+  ggplot(aes(x = year, y = lifeExp)) + 
+  geom_line(size = 1.2) 
+```
+
+中国 v.s. 美国平均寿命
+```{r fig.align = "center", out.width=600}
+gapminder %>%
+  filter((country == "China") | (country == "United States")) %>% 
+  ggplot(aes(x = year, y = lifeExp, color = country)) + 
+  geom_line(size = 1.2) 
+```
+
+
+# 数据建模
+
+将在每个专题问题中做具体介绍, 本课程外的数据分析方法可参考["Principles of Econometrics with  R"](https://bookdown.org/ccolonescu/RPoE4/)
+
+
+# 特别说明: 缺失值
+
+## 缺失数据的表现形式
+
+- Explicit: 如`NA`
+- Implicit: 不存在的观测
+
+## R中如何表示缺失值?
+
+`NA`: not available 缺失值
+
+注意`NAN`不是缺失值: not a number 计算错误, 不是数值(比如, 除以0, log(负数)等). 一般出现`NAN`时, 需要检查计算过程.
+
+## 如何处理缺失值?
+
+### 找到缺失值
+
+- Explicit: `is.na()`, 返回数据集与原数据集大小相同, 元素为`TRUE`/`FALSE`
+
+- Implicit: 
+
+```{r}
+gapminder_unfiltered %>%
+  count(year)
+```
+
+使用`complete()`补全所有观测
+```{r}
+gapminder_complete <- gapminder_unfiltered %>%
+  complete(country, year)
+
+head(gapminder_complete, 10)
+```
+```{r}
+gapminder_na <- is.na(gapminder_complete) 
+head(gapminder_na, 10)
+```
+
+### 处理缺失值方法
+- 数据预处理时直接删除
+
+删除某个变量是缺失值的情况
+```{r}
+#1
+gapminder_complete %>% 
+  drop_na(lifeExp)
+#2
+gapminder_complete %>% 
+  filter(!is.na(lifeExp))
+```
+
+删除任一变量是缺失值的情况
+```{r}
+#1
+gapminder_complete %>% 
+  drop_na()
+#2
+gapminder_complete %>% 
+  filter_all(all_vars(!is.na(.)))
+```
+
+- 数据分析时进行处理: `na.rm = TRUE`
+
+```{r}
+# 求和
+gapminder_complete %>% 
+  group_by(country, year) %>% 
+  mutate(
+    a = sum(lifeExp, gdpPercap, na.rm = TRUE)
+  )
+
+# 作图
+gapminder_complete %>% 
+  ggplot(aes(x = gdpPercap, y = lifeExp)) + 
+  geom_point(na.rm = TRUE)
+```
+
+- 填补
+
+填补为0
+```{r}
+gapminder_complete %>% 
+  mutate_at(vars(lifeExp:gdpPercap), funs(replace(., is.na(.), 0)))
+```
+
+填补属于处理缺失值中难度比较高的操作, 更完整的数据预处理可参考R package `recipes`
+
+<!-- ## 读入数据: 格式转换 -->
+<!-- - 读数值 -->
+<!-- ```{r} -->
+<!-- # Used in America -->
+<!-- parse_number("$123,456,789") -->
+<!-- # Used in many parts of Europe -->
+<!-- parse_number("123.456.789", locale = locale(grouping_mark = ".")) -->
+<!-- ``` -->
+
+<!-- - 读文字(尤其汉字) -->
+<!-- ```{r} -->
+<!-- parse_character(GDP$Prvcnm, locale = locale(encoding = "GB2312")) -->
+
+<!-- guess_encoding(charToRaw(GDP$Prvcnm[1])) -->
+<!-- ``` -->
+
+<!-- - 读日期时间 -->
+
+
+<!-- - 例子 -->
+<!-- ```{r} -->
+<!-- gapminder <- read_csv( -->
+<!--   "data/gapminder.csv", -->
+<!--   col_types = cols( -->
+<!--     Prvcnm = col_character(), -->
+<!--     Prvcnm_id = col_integer() -->
+<!--   ) -->
+<!--   ) -->
+<!-- ``` -->

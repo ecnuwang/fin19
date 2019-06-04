@@ -1,0 +1,49 @@
+---
+title: "HW1"
+author: "Zhang3"
+date: "2019年4月1日"
+output: html_document
+---
+
+# 一级标题
+
+## 二级标题
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(knitr)
+library(tidyverse)
+library(kableExtra)
+library(gapminder)
+
+# 在R代码中添加注释
+head(gapminder)
+```
+
+## Including Plots
+
+You can embed plots, for example:
+
+```{r echo=FALSE}
+gapminder %>%
+  ggplot(aes(x = gdpPercap, y = lifeExp)) + 
+  geom_point()
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Including Tables
+
+You can embed tables, for example:
+
+```{r echo=FALSE}
+gapminder %>%
+  filter(country == "China") %>% 
+  kable() %>% 
+  kable_styling("striped")
+```
+
+Note that the `results = 'asis'` parameter was added to the code chunk to output the table as formatted.

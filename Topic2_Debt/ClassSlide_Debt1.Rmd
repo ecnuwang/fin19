@@ -1,0 +1,344 @@
+---
+title: "金融研究方法"
+subtitle: "中国债务现状"
+author: "汪小圈"
+date: "2019/3/27"
+output:
+  xaringan::moon_reader:
+    css: [zh-CN.css, default, extra.css]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+
+---
+
+```{r include=FALSE}
+library(knitr)
+
+opts_chunk$set(dpi = 300, fig.align = "center", fig.width = 6, fig.height = 4, message = F, error = F, warning = F)
+
+library(tidyverse)
+library(readxl)
+
+library(ggthemes)
+library(htmlTable)
+library(extrafont)
+library(foreign)
+library(plotly)
+library(lubridate)
+library(png)
+
+loadfonts(device = "win")
+
+theme_set(theme_minimal(base_size = 15, base_family = "STZhongsong"))
+
+theme_update(
+    panel.background = element_blank(),
+    panel.grid.minor = element_blank(), 
+    panel.grid.major = element_line(color = "gray50", size = 0.5),
+    panel.grid.major.x = element_blank(),
+    axis.ticks.length = unit(.25, "cm"),
+    axis.ticks.x = element_line(colour = "gray50"),
+    axis.ticks.y = element_blank(),
+    axis.line.x = element_line(color = "gray50", size = 0.5)
+)
+```
+
+## 中国债务总量
+
+```{r echo=FALSE, out.width=600}
+include_graphics("pics/debt_GDP_CN.png")
+```
+.remark-small[Source: Roberts & Zurawski (2016)]
+
+---
+
+## 非金融企业债券：发展中国家比较
+
+```{r echo=FALSE, out.width=550}
+include_graphics("pics/nonfindebt_intl.png")
+```
+.remark-small[Source: Roberts & Zurawski (2016)]
+
+---
+
+## 中国企业的债务太多了吗？
+  
+- 2008年后非金融企业债务总量增速很快
+
+- 杠杆：学名负债率 / 资本结构，即债务总额占总资产的比例
+
+- 是否需要去杠杆？去哪些杠杆？
+
+    - 哪些企业和部门的杠杆上升很快？
+    
+    - 杠杆的上升是否有经济基本面的支持吗？
+
+---
+
+## 规模以上工业企业负债率
+
+```{r echo=FALSE, out.width=700}
+include_graphics("pics/leverage.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 工业企业负债率：分连续存在年份
+
+```{r echo=FALSE, out.width=550}
+include_graphics("pics/leverage_survive.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 工业企业负债率：分企业规模
+
+```{r echo=FALSE, out.width=550}
+include_graphics("pics/leverage_size.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 工业企业负债率：分行业
+
+```{r echo=FALSE, out.width=550}
+include_graphics("pics/leverage_ind.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 工业企业负债率：分地区
+
+```{r echo=FALSE, out.width=550}
+include_graphics("pics/leverage_region.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 工业企业负债率：分企业所有制
+
+```{r echo=FALSE, out.width=700}
+include_graphics("pics/leverage_owner.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 工业企业负债率：分企业所有制
+
+```{r echo=FALSE, out.width=700}
+include_graphics("pics/leverage_list.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 中国企业负债率的基本事实
+
+- 连续存在时间越长的企业，负债率下降的幅度较小
+- 大企业的负债率小幅下降，而中小企业的负债率显著下降
+- 重工业企业负债率的下降幅度一般比轻工业企业小很多
+- 东北和中部地区企业的平均负债率下降幅度最大，东部发达地区企业的平均负债率相当稳定
+- 国有企业的平均负债率始终高于私营企业，虽然国有企业平均负债率的下降幅度最大，但存续时间长的国有企业的平均负债率是稳定的并在2009之后上升
+- 在主板上市的制造业企业的平均负债率不断上升
+
+---
+
+## 负债率的经济基本面支持
+
+资本结构理论
+
+- MM定理(Modigliani & Miller, 1958)
+
+- 权衡理论(Bradley et al., 1984)
+
+- 融资优序理论(Myers & Majluf, 1984)
+
+Review: Frank & Goyal (2008)
+
+---
+
+## MM定理(MM Irrelevance Theorem)
+
+企业价值与资本结构无关，如果以下条件成立
+
+1. 没有任何税收
+
+2. 股东和管理层之间没有利益分歧
+
+3. 没有违约风险
+
+4. 股东和债权人之间没有利益冲突
+
+5. 对于公司未来的融资需求，没有信息不对称
+
+---
+
+## 权衡理论(Trade-off Theory)
+
+- 放松假设1和3：有税收、有违约风险
+
+- 债务的好处：税盾(tax shield)
+
+- 债务的坏处：增加违约风险
+
+---
+
+## 融资优序理论(Pecking Order Theory)
+
+- 放松假设5：对于公司未来的融资需求，存在信息不对称
+
+- 公司内股东(老股东)了解公司未来项目的收益，而公司外的不知道
+
+- 只有项目收益低时，公司(老股东)才选择对外向新股东融资，否则优先选择自有资金和债务
+
+---
+
+## 资本结构各理论的预测
+
+```{r echo=FALSE, out.width=700}
+include_graphics("pics/leverage_theory.png")
+```
+.remark-small[Source: 肖泽忠和邹宏(2008)]
+
+---
+
+## 企业资本结构的决定因素
+
+- 经营性风险
+
+- 有形资产占比
+
+- 利润率
+
+- 规模
+
+- 税率
+
+- 非债务税盾
+
+---
+
+## 经营性风险
+
+```{r echo=FALSE, out.width=550}
+include_graphics("pics/operating_risk.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 有形资产占比
+
+```{r echo=FALSE, out.width=550}
+include_graphics("pics/fixed_asset.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 利润率
+
+```{r echo=FALSE, out.width=550}
+include_graphics("pics/roa.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 规模
+
+```{r echo=FALSE, out.width=550}
+include_graphics("pics/size.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 税率
+
+```{r echo=FALSE, out.width=550}
+include_graphics("pics/tax.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 非债务税盾
+
+```{r echo=FALSE, out.width=550}
+include_graphics("pics/tax_shield.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 企业负债率回归
+
+```{r echo=FALSE, out.width=550}
+include_graphics("pics/leverage_reg.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 国企的贷款“优势”
+
+```{r echo=FALSE, out.width=700}
+include_graphics("pics/owner_year.png")
+```
+.remark-small[Source: 钟宁桦等(2016)]
+
+---
+
+## 债务隐患：不同行业上市公司负债率
+
+```{r echo=FALSE, out.width=700}
+include_graphics("pics/leverage_listed.png")
+```
+.remark-small[Source: Zhang et al. (2015)]
+
+---
+
+## 不同行业上市公司的盈利能力
+
+```{r echo=FALSE, out.width=700}
+include_graphics("pics/profitability_listed.png")
+```
+.remark-small[Source: Zhang et al. (2015)]
+
+---
+
+## 参考文献(I)
+
+.remark-ref[
+- Bradley, M., Jarrell, G., & Kim, E. H. (1984). On the existence of an optimal capital structure: Theory and evidence. Journal of Finance, 39, 857–877.
+
+- Frank, M., Goyal, V. (2008). Trade-off and pecking order theories of debt. In: Eckbo, E. (Ed.), Handbook of Corporate Finance: Empirical Corporate Finance vol. 2. Elsevier, North Holland, 135–202.
+
+- Modigliani, F. & Miller, M. H. (1958). The cost of capital, corporate finance and the theory of investment. American Economic Review, 48, 261–297.
+
+- Myers, S. C. & Majluf, N. S. (1984). Corporate financing and investment decisions when firms have information that investors do not have. Journal of Financial Economics, 13, 187–221.
+
+- Roberts, I., & Zurawski, A. (2016). 12. Changing patterns of corporate leverage in China: Evidence from listed companies. China’s New Sources of Economic Growth, 271-312.
+]
+
+---
+
+## 参考文献(II)
+
+.remark-ref[
+- Zhang, W., Han, G., Brian, N., & Chan, S. (2015). Corporate leverage in China: What has it increased fast in recent years and where do the risks lie. HKIMR Working Paper No.10.
+
+- 肖泽忠,邹宏.中国上市公司资本结构的影响因素和股权融资偏好[J].经济研究,2008(06):119-134+144.
+
+- 钟宁桦,刘志阔,何嘉鑫,苏楚林.我国企业债务的结构性问题[J].经济研究,2016,51(07):102-117.
+]

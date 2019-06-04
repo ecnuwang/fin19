@@ -1,0 +1,17 @@
+﻿Symbol [证券代码] - 交易所公布的代码
+ShortName [证券简称] - 报告期截止时的证券简称
+EndDate [截止日期] - 
+RegisterAddress [注册地址] - 
+OfficeAddress [办公地址] - 
+LargestHolder [第一大控股股东] - 
+LargestHolderRate [第一大股东持股比率(%)] - 
+TopTenHoldersRate [前十大股东持股比例(%)] - 前十名股东持股比例之和
+ActualControllerName [实际控制人名称] - 根据上市公司年报披露的实际控制人，若年报未披露则根据供股链判断的实际控制人。
+ActualControllerNatureID [实际控制人性质编码] - 参照附录二、4企业性质
+SharesNature [实际控制人拥有上市公司股份性质] - 
+EquityNature [股权性质] - 国企、民营、外资、其他
+EquityNatureID [股权性质编码] - 1=国企、2=民营、3=外资、4=其他
+Hierarchy [层级判断] - 只针对股权性质为国企时，区分市、省、央企
+Founder [创始人] - 
+Seperation [两权分离率(%)] - 实际控制人拥有上市公司控制权与所有权之差
+Originator [发起人] - 

@@ -1,0 +1,592 @@
+---
+title: "中国股票市场三因子与ROE异象"
+author: "汪小圈"
+date: "2019/5/15"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+options(knitr.kable.NA = '')
+```
+
+# 导言
+
+## 目标
+
+- 构造中国三因子，并与Fama-French三因子进行比较
+
+- 使用因子模型与Fama-Macbeth方法考察ROE异象
+
+## 数据来源
+
+CSMAR(国泰安) http://cn.gtadata.com/
+
+- 基本信息: 股票市场系列 -> 股票市场交易 -> 基本数据 -> 公司文件
+
+- 股票市场信息: 股票市场系列 -> 股票市场交易 -> 个股交易数据 -> 日、月个股回报率文件
+
+- 无风险利率: 股票市场系列 -> 股票市场交易 -> 汇率及利率 -> 无风险利率文件
+
+- 多因子: 因子研究系列 -> Fama-French因子 -> 五因子模型指标(日、月)
+
+- 财务数据: 公司研究系列 -> 财务指标分析 -> 披露财务指标
+
+
+## 选取样本与变量
+
+- 2007/1-2018/12, 上海与深圳A股上市企业
+
+- 基本信息: 行业类别、市场类型
+
+- 股票市场信息
+
+    - 个股交易信息: 考虑现金红利再投资的月个股回报率、月个股流通市值
+    
+    - 无风险利率: 月度化无风险利率
+    
+    - 五因子: 市场风险溢价因子(总市值加权)、市值因子(总市值加权)、账面市值比因子(总市值加权)
+
+- 财务信息
+    
+    - 披露财务指标：归属于上市公司股东的扣除非经常性损益的净利润、加权平均净资产收益率
+    
+## 分解目标
+
+- Step 1: 导入整理数据，保证各数据库间的变量及单位等保持一致
+
+- Step 2: 选取A股非金融、非公用事业上市公司
+
+- Step 3: 合并上市公司股票信息与财务信息，并保留市值处于前70%的上市企业
+
+- Step 4: 每月根据市值与价值对企业进行排序分组，并计算每个投资组合的市值加权平均收益率
+
+- Step 5: 构造中国三因子，并比较中国三因子与Fama-French三因子在中国市场的解释力度
+
+- Step 6: 构造ROE因子，比较CAPM、中国三因子与Fama-French三因子模型的 $\alpha$
+
+- Step 7: 使用Fama-Macbeth方法，考察ROE是否能够解释中国股票超额收益率
+
+
+# 准备工作
+```{r}
+# 加载需要的R包
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(lmtest)
+library(sandwich) #NeweyWest
+library(broom)
+library(stargazer)
+library(kableExtra)
+library(tibbletime)
+```
+
+- 保存R Script, 并修改工作目录到R Script所在的文件夹(`Session -> Set Working Directory -> To Source File Location`)
+
+- 所有数据都保存在该文件夹中的子文件夹"Anomaly_data"中
+
+
+# 导入数据
+```{r}
+# 基本信息
+cominfo <- read_excel("Anomaly_data/TRD_Co.xlsx")
+
+# 财务指标
+comfin <- read_excel("Anomaly_data/FI_T2.xlsx", col_names = c("Stkcd", "Accper", "Indcd", "nr", "npexnr", "ROE", "ROE_exnr"), skip = 3)
+
+# 个股交易数据
+trdmnth <- read_excel("Anomaly_data/TRD_Mnth.xlsx")
+
+# 无风险利率
+nrrate <- read_excel("Anomaly_data/TRD_Nrrate.xlsx")
+
+# 五因子
+facmnth <- read_excel("Anomaly_data/STK_MKT_FivefacMonth.xlsx")
+```
+
+# 整理数据
+
+## 初步筛选整理
+```{r}
+# 填补数据空值
+comfin <- comfin %>% 
+  mutate(
+    Accper = ymd(Accper),
+    year = year(Accper),
+    month = month(Accper)
+  ) %>% 
+  group_by(Stkcd) %>% 
+  mutate(
+    npexnr = npexnr %>% accumulate(~if_else(is.na(.y), .x, .y)),
+    ROE = ROE %>% accumulate(~if_else(is.na(.y), .x, .y))
+  ) %>% 
+  filter(year <= 2018)
+
+trdmnth <- trdmnth %>% 
+  separate(Trdmnt, into = c("year", "month"), sep = "-") %>% 
+  mutate(
+    year = as.numeric(year),
+    month = as.numeric(month)
+  )
+
+nrrate <- nrrate %>% 
+  mutate(
+    Clsdt = ymd(Clsdt),
+    year = year(Clsdt),
+    month = month(Clsdt)
+    ) %>% 
+  group_by(year, month) %>% 
+  summarise(rf = mean(Nrrmtdt))
+
+# 挑选综合A股和创业板的因子
+facmnth <- facmnth %>% 
+  filter(MarkettypeID == "P9709", Portfolios == 1) %>% 
+  separate(TradingMonth, into = c("year", "month"), sep = "-") %>% 
+  mutate(
+    year = as.numeric(year),
+    month = as.numeric(month)
+  ) %>% 
+  mutate_at(vars(RiskPremium1:CMA2), ~.*100)
+```
+
+## 筛选满足条件的A股上市企业
+
+- A股
+- 非金融行业、非公用事业行业
+
+
+```{r}
+cominfo %>% 
+  count(Indcd, Indnme)
+
+comA <- cominfo %>% 
+  filter(
+    Indcd != "0001" & Indcd != "0002",
+    Markettype == 1 | Markettype == 4 | Markettype == 16
+  )
+
+comdata <- comfin %>% 
+  inner_join(comA, by = c("Stkcd" = "Stkcd"))
+```
+
+## 合并数据集与构造变量
+
+把股票数据与财务数据合并，合并结果存储在`trddata`中
+
+构造下列变量：
+
+- 总市值 = 上个月月末收盘价*总股数
+
+- 市盈率 = 扣除非经常损益后的净利润 / 总市值
+
+筛选市值在前70%的企业
+
+```{r}
+trddata <- trdmnth %>% 
+  mutate(
+    year1 = if_else(month == 1 | month == 2 | month == 3, year - 1, year),
+    month1 = case_when(
+      month == 1 | month == 2 | month == 3 ~ 12,
+      month == 4 | month == 5 | month == 6 ~ 3,
+      month == 7 | month == 8 | month == 9 ~ 6,
+      TRUE ~ 9
+    )
+  ) %>% 
+  inner_join(comdata, by = c("Stkcd" = "Stkcd", "year1" = "year", "month1" = "month")) %>% 
+  complete(Stkcd, year, month) %>% 
+  arrange(Stkcd, year, month) %>% 
+  group_by(Stkcd) %>% 
+  mutate(
+    size = lag(Mclsprc) * (Msmvttl/Mclsprc),
+    EP = npexnr / size
+  ) %>% 
+  group_by(year, month) %>% 
+  filter(size >= quantile(size, 0.3, na.rm = T)) %>% 
+  left_join(nrrate) %>% 
+  mutate(
+    exret = Mretwd*100 - rf
+  ) 
+```
+
+
+# 因子模型
+## 对size、value、ROE进行排序分组，并计算超额收益率
+```{r}
+trddata_grp <- trddata %>% 
+  group_by(year, month) %>% 
+  mutate(
+    grp_size = ntile(size, 2),
+    grp_value = case_when(
+      is.na(EP) ~ NA_real_,
+      EP >= quantile(EP, 0.7, na.rm = T) ~ 1,
+      EP > quantile(EP, 0.3, na.rm = T) ~ 2,
+      TRUE ~ 3
+    ),
+    grp_ROE = ntile(ROE, 10),
+    grp_size1 = ntile(size, 10)
+  ) %>% 
+  group_by(year, month, grp_size1) %>% 
+  mutate(
+    grp_ROE_con = ntile(ROE, 10)
+  ) %>% 
+  ungroup()
+```
+
+
+## 计算加权平均股票回报率与定价因子
+```{r}
+# Value-weighted return
+factor1 <- trddata_grp %>% 
+  group_by(year, month) %>% 
+  summarise(
+    MKT = sum(exret*size, na.rm = TRUE) / sum(size, na.rm = TRUE)
+  ) %>% 
+  ungroup()
+  
+factor2 <- trddata_grp %>% 
+  group_by(year, month, grp_size, grp_value) %>% 
+  summarise(
+    vwret = sum(Mretwd*100*size, na.rm = TRUE) / sum(size, na.rm = TRUE)
+  ) %>% 
+  ungroup() %>% 
+  filter(!is.na(grp_size), !is.na(grp_value)) %>% 
+  mutate(grp = grp_size*10 + grp_value) %>% 
+  select(year, month, grp, vwret) %>% 
+  spread(grp, vwret) %>% 
+  mutate(
+    SMB = 1/3*(`11` + `12` + `13`) - 1/3*(`21` + `22` + `23`),
+    VMG = 1/2*(`11` + `21`) - 1/2*(`13` + `23`)
+  )
+
+# 与Fama-French因子数据合并
+factor <- factor2 %>%
+  left_join(factor1) %>% 
+  left_join(facmnth)
+```
+
+# Size and value in China
+## 描述性统计分析
+```{r results='asis'}
+factor %>% 
+  summarise_at(vars(MKT, SMB, VMG), list(mean, sd, min, max)) %>% 
+  gather(key, value, MKT_fn1:VMG_fn4) %>%
+  separate(key, into = c("Factors", "method"), sep = "_") %>% 
+  spread(method, value) %>% 
+  rename(Mean = fn1, Std = fn2, Min = fn3, Max = fn4) %>% 
+  kable(digits = 3) %>% 
+  kable_styling("striped")
+
+## 使用stargazer输出描述性统计量
+factor %>% 
+  select(MKT, SMB, VMG) %>% 
+  data.frame() %>% 
+  stargazer(summary.stat = c("N", "mean", "sd", "min", "max"), 
+            type = "html", style = "aer")
+
+# 相关系数
+factor %>% 
+  select(MKT, SMB, VMG) %>% 
+  cor(use = "complete.obs", method = "pearson") %>% 
+  kable(digits = 4) %>% 
+  kable_styling("striped")
+```
+
+## 比较因子模型
+```{r results="asis"}
+# R-square
+# All individual stocks
+stkret <- trdmnth %>% 
+  left_join(nrrate) %>% 
+  mutate(
+    exret = Mretwd*100 - rf
+  ) %>% 
+  left_join(factor)
+
+rsq <- stkret %>% 
+  filter(!is.na(exret), !is.na(MKT)) %>% 
+  group_by(Stkcd) %>% 
+  filter(n() >= 12) %>% 
+  nest(-Stkcd) %>% 
+  mutate(
+    `MKT` = data %>% map(~lm(exret ~ MKT, .)) %>% map(glance) %>% map_dbl("r.squared"),
+    `MKT, SMB` = data %>% map(~lm(exret ~ MKT + SMB, .)) %>% map(glance) %>% map_dbl("r.squared"),
+    `MKT, VMG` = data %>% map(~lm(exret ~ MKT + VMG, .)) %>% map(glance) %>% map_dbl("r.squared"),
+    `MKT, SMB, VMG` = data %>% map(~lm(exret ~ MKT + SMB + VMG, .)) %>% map(glance) %>% map_dbl("r.squared")
+  ) %>% 
+  select(-data)
+  
+rsq %>% 
+  gather(Factors, rsq, `MKT`:`MKT, SMB, VMG`) %>% 
+  group_by(Factors) %>% 
+  summarise(`Avg. R-square` = mean(rsq)) %>% 
+  kable(digits = 3) %>% 
+  kable_styling("striped")
+
+# All but the smallest 30% of stocks
+rsq1 <- trddata %>% 
+  left_join(factor) %>% 
+  filter(!is.na(exret), !is.na(MKT)) %>% 
+  group_by(Stkcd) %>% 
+  filter(n() >= 12) %>% 
+  nest(-Stkcd) %>% 
+  mutate(
+    `MKT` = data %>% map(~lm(exret ~ MKT, .)) %>% map(glance) %>% map_dbl("r.squared"),
+    `MKT, SMB` = data %>% map(~lm(exret ~ MKT + SMB, .)) %>% map(glance) %>% map_dbl("r.squared"),
+    `MKT, VMG` = data %>% map(~lm(exret ~ MKT + VMG, .)) %>% map(glance) %>% map_dbl("r.squared"),
+    `MKT, SMB, VMG` = data %>% map(~lm(exret ~ MKT + SMB + VMG, .)) %>% map(glance) %>% map_dbl("r.squared")
+  ) %>% 
+  select(-data)
+  
+rsq1 %>% 
+  gather(Factors, rsq, `MKT`:`MKT, SMB, VMG`) %>% 
+  group_by(Factors) %>% 
+  summarise(`Avg. R-square` = mean(rsq)) %>% 
+  kable(digits = 3) %>% 
+  kable_styling("striped")
+```
+
+# ROE异象
+
+## 因子模型分析
+
+- 时间序列回归
+- 标准误差的估计使用Newey West方法调整
+
+```{r results="asis"}
+# unconditional sort
+factor3 <- trddata_grp %>% 
+  group_by(year, month, grp_ROE) %>% 
+  summarise(
+    vwret = sum(Mretwd*100*size, na.rm = TRUE) / sum(size, na.rm = TRUE)
+  ) %>% 
+  ungroup() %>% 
+  filter(!is.na(grp_ROE)) %>% 
+  spread(grp_ROE, vwret) %>% 
+  mutate(
+    rmw = `10` - `1`
+  ) %>% 
+  left_join(factor)
+
+# size-neutral sort
+factor4 <- trddata_grp %>% 
+  group_by(year, month, grp_ROE_con) %>% 
+  summarise(
+    vwret = sum(Mretwd*100*size, na.rm = TRUE) / sum(size, na.rm = TRUE)
+  ) %>% 
+  ungroup() %>% 
+  filter(!is.na(grp_ROE_con)) %>% 
+  spread(grp_ROE_con, vwret) %>% 
+  mutate(
+    rmw = `10` - `1`
+  ) %>% 
+  left_join(factor)
+
+# Unconditional
+## CAPM
+capmtest1 <- lm(rmw ~ MKT, factor3)
+capmsd1 <- coeftest(capmtest1, vcov = NeweyWest(capmtest1, lag = 4))
+
+## 3-factor model
+thftest1 <- lm(rmw ~ MKT + SMB + VMG, factor3)
+thfsd1 <- coeftest(thftest1, vcov = NeweyWest(thftest1, lag = 4))
+
+## Fama-French 3-factor model
+thftest1_FF <- lm(rmw ~ MKT + SMB2 + HML2, factor3)
+thfsd1_FF <- coeftest(thftest1_FF, vcov = NeweyWest(thftest1_FF, lag = 4))
+
+# Size-neutral
+## CAPM
+capmtest2 <- lm(rmw ~ MKT, factor4)
+capmsd2 <- coeftest(capmtest2, vcov = NeweyWest(capmtest2, lag = 4))
+
+## 3-factor model
+thftest2 <- lm(rmw ~ MKT + SMB + VMG, factor4)
+thfsd2 <- coeftest(thftest2, vcov = NeweyWest(thftest2, lag = 4))
+
+## Fama-French 3-factor model
+thftest2_FF <- lm(rmw ~ MKT + SMB2 + HML2, factor4)
+thfsd2_FF <- coeftest(thftest2_FF, vcov = NeweyWest(thftest2_FF, lag = 4))
+
+stargazer(capmsd1, thfsd1, thfsd1_FF, capmsd2, thfsd2, thfsd2_FF, type = "html",
+          intercept.bottom = FALSE, intercept.top = TRUE, 
+          column.labels = c("Unconditional Sorts", "Size-Neutral Sorts"), 
+          column.separate = c(3, 3),
+          style = "aer", omit.table.layout = "n")
+```
+
+
+## Fama-Macbeth 数据预处理
+
+- 计算每支股票的 $\beta$ (已完成，代码见下面注释部分)
+
+- 三因子与Fama-Macbeth回归中的变量对应：
+
+    - 市场因子： $\beta$
+    - 市值因子：市值的对数 (lnMe)
+    - 价值因子：earnings-to-price ratio的对数 (lnEP)
+
+
+```{r}
+# Read stock daily return
+nrrate_d <- read_excel("Anomaly_data/TRD_Nrrate.xlsx") %>%
+  mutate(rf = Nrrdaydt/100,
+         Clsdt = ymd(Clsdt)) %>%
+  select(Clsdt, rf)
+
+fac_d <- read_excel("data/STK_MKT_ThrfacDay.xlsx") %>%
+  filter(MarkettypeID == "P9709") %>%
+  mutate(
+    TradingDate = ymd(TradingDate)
+  ) %>%
+  select(TradingDate, RiskPremium2)
+
+read_file <- function(df){
+  read_excel(df) %>%
+    filter(Markettype == 1 | Markettype == 4 | Markettype == 16) %>%
+    select(Stkcd, Trddt, Dretwd) %>%
+    mutate(
+      Trddt = ymd(Trddt)
+    )
+}
+
+stkdaily <- tibble(
+  name = dir(path = "D:/Qsync/Courses/金融研究方法/2019本科/上机课/T4_Event/Event_data", pattern = "TRD_Dalyr0")
+) %>%
+  mutate(
+    f = str_c("D:/Qsync/Courses/金融研究方法/2019本科/上机课/T4_Event/Event_data", name, sep = "/"),
+    data = f %>% map(read_file)
+  ) %>%
+  unnest(data) %>%
+  select(-name, -f) %>%
+  left_join(nrrate_d, by = c("Trddt" = "Clsdt")) %>%
+  # left_join(fac_d, by = c("Trddt" = "TradingDate")) %>%
+  mutate(exret = Dretwd - rf)
+
+fac_d <- stkdaily %>% 
+  group_by(Trddt) %>% 
+  summarise(
+    MKT = sum(exret*size, na.rm = TRUE) / sum(size, na.rm = TRUE)
+  ) %>% 
+  ungroup()
+
+stkdaily1 <- stkdaily %>% 
+  left_join(fac_d)
+
+# Calculate CAPM beta
+stkmonth <- stkdaily %>%
+  mutate(year = year(Trddt), month = month(Trddt)) %>%
+  group_by(Stkcd, year, month) %>%
+  filter(Trddt == max(Trddt)) %>%
+  mutate(tail = 1) %>%
+  select(Stkcd, Trddt, tail)
+
+rolling_beta <- rollify(.f = function(A, B){lm(A ~ B)},
+                        window = 250,
+                        unlist = F)
+
+stk_beta <- stkdaily1 %>%
+  left_join(stkmonth) %>%
+  group_by(Stkcd) %>%
+  filter(n() > 300) %>%
+  mutate(
+    model = if_else(tail == 1, rolling_beta(exret, RiskPremium2), NULL)
+  ) %>%
+  filter(!is.na(model)) %>%
+  mutate(
+    coef = model %>% map(tidy)
+  ) %>%
+  select(Stkcd, Trddt, coef) %>%
+  unnest(coef) %>%
+  filter(term == "B") %>%
+  select(Stkcd, Trddt, estimate) %>%
+  mutate(year = year(Trddt), month = month(Trddt))
+
+
+stk_beta <- read_csv("Anomaly_data/beta.csv")
+  
+trddata_fm <- trddata %>% 
+  left_join(stk_beta, by = c("Stkcd" = "Stkcd", "year" = "year", "month" = "month")) %>% 
+  rename(beta = estimate) %>% 
+  mutate(
+    lnMe = log(size),
+    lnEP_pos = if_else(EP > 0, log(EP), 0),
+    EP_dum = if_else(EP <= 0, 1, 0)
+  )
+```
+
+## Fama-Macbeth回归
+
+两个步骤：
+
+- 针对每月，将本月股票收益率对上一月的企业特征进行横截面回归；
+
+- 将时间序列上的回归系数取平均，并对这些系数进行t检验，标准误差的估计使用Newey West方法调整
+
+```{r results="asis"}
+fm_model <- function(model){
+  fmcoef <- trddata_fm %>%
+    nest(-year, -month) %>%
+    mutate(
+      coefs = data %>% map(~lm(model, .)) %>% map(tidy)
+    ) %>%
+    select(year, month, coefs) %>%
+    unnest(coefs) %>% 
+    nest(-term) %>%
+    mutate(
+      fmtest = data %>% map(~lm(estimate ~ 1, .)),
+      fmsd = fmtest %>% map(~coeftest(., vcov = NeweyWest(., lag = 4))) %>% map(tidy)
+    ) %>%
+    select(term, fmsd) %>%
+    unnest() %>% 
+    mutate(varnm = str_c(round(estimate, 3), "\n", "(", round(statistic, 2), ")")) %>% 
+    select(term, varnm) 
+  
+  fmrsq <- trddata_fm %>%
+    nest(-year, -month) %>%
+    mutate(
+      rsq = data %>% map(~lm(model, .)) %>% map(glance),
+      N = data %>% map(~count(.))
+    ) %>%
+    select(year, month, rsq, N) %>%
+    unnest(rsq, N) %>% 
+    summarise_at(vars(r.squared, n), mean) %>% 
+    mutate(r.squared = round(r.squared, 3),
+           n = round(n, 0)) %>% 
+    gather(term, varnm, r.squared:n) 
+  
+  rbind(fmcoef, fmrsq)
+}
+
+fmcoef1 <- fm_model(exret ~ beta)
+
+fmcoef2 <- fm_model(exret ~ lnMe)
+
+fmcoef3 <- fm_model(exret ~ beta + lnMe)
+
+fmcoef4 <- fm_model(exret ~ beta + lnMe + lnEP_pos + EP_dum)
+
+fmcoef5 <- fm_model(exret ~ beta + lnMe + lnEP_pos + EP_dum + ROE)
+
+fmcoef1 %>% 
+  full_join(fmcoef2, by = c("term" = "term")) %>% 
+  right_join(fmcoef3, by = c("term" = "term")) %>% 
+  right_join(fmcoef4, by = c("term" = "term")) %>% 
+  right_join(fmcoef5, by = c("term" = "term")) %>% 
+  rename(
+    `(1)` = varnm.x,
+    `(2)` = varnm.y,
+    `(3)` = varnm.x.x,
+    `(4)` = varnm.y.y,
+    `(5)` = varnm
+  ) %>% 
+  kable() %>% 
+  kable_styling("striped")
+```

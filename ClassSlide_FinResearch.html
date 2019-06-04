@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>金融研究方法</title>
+    <meta charset="utf-8">
+    <meta name="author" content="汪小圈" />
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link rel="stylesheet" href="zh-CN.css" type="text/css" />
+    <link rel="stylesheet" href="extra.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# 金融研究方法
+## 课程简介
+### 汪小圈
+### 2019/2/20
+
+---
+
+
+# 关于我
+
+- 汪小圈
+- 办公室: 中山北路校区理科大楼A303室
+- 电子邮箱: xqwang@jjx.ecnu.edu.cn
+- 答疑时间: 每周三上午8:00-10:00(闵行法商南楼3楼教师之家); 其他时间答疑请邮件预约
+- 履历:
+    - 本科: 华东师范大学统计系
+    - 博士: 北京大学光华管理学院金融系
+    
+---
+
+# 关于课程
+- 关于金融学研究的入门课程
+- 拟包含四个中国金融研究话题
+- 了解中国金融的典型事实
+- 在每个研究话题下选择一篇论文, 并复制该论文的实证结果
+- 理解经典金融研究方法
+- 学习使用统计软件将经典研究方法付诸实施
+
+---
+
+# 关于统计软件与上机课
+- 本课程使用教授R
+- 为什么? 
+    - 开源
+    - 简单易学
+    - 可复制的研究
+- 教什么? 
+    - R中关于数据处理的基本操作
+    - 如何使用R将经典研究方法付诸实施
+- 上机课占课程一半以上的时间
+
+---
+
+# 课程安排(I)
+- 中国金融行业的发展
+    - 回顾中国金融行业发展
+    - 熟悉数据库
+    - R软件简介
+    - 作业：描绘中国金融行业发展
+- 中国债务问题
+    - 关于中国债务及杠杆率的一些事实
+    - 中国僵尸企业问题
+    - 使用R软件找出上市公司中的僵尸企业
+    - 作业：分析上市公司中僵尸企业的分布情况
+
+---
+
+# 课程安排(II)
+- 中国股票市场异象
+    - 股票市场异象的检验
+    - 中国股票市场存在哪些异象
+    - 使用R软件检验股票市场价值溢价
+    - 作业：利用中国数据检验市值溢价
+- 事件研究
+    - 事件研究方法
+    - 政治不确定性与股票市场反应
+    - 使用R软件估计政治不确定性的股票市场反应
+    - 作业：检验不同企业对政治不确定事件的股票市场反应
+
+---
+
+# 评分
+- 平时作业: 60%, 交两次上机作业, 每次占30%
+    - 根据上课实例，使用数据完成相关实证方法，并根据要求报告结果
+    - 需提交简单报告和R代码
+    - 总共四次上机作业，选两次分数最高
+- 期末课程报告: 40%, 可以有两种形式
+    - 在文献列表中挑一篇文章进行报告
+    - 一份研究计划
+
+---
+
+# 期末课程报告的要求
+
+- 10分钟口头报告
+- 报告内容
+    - 研究动机 (可选)
+    - 研究问题
+    - 实证研究方法
+    - 数据来源及变量
+    - 研究结论
+    - 评述 (可选)
+- 需提交相应书面报告, 字数不限
+
+---
+
+# 文献列表
+
+- 与本学期的四个研究议题相关
+- 纯实证文章
+- 既有经典文献, 也有较新的研究进展
+- 大部分发表于顶级期刊, 使用美国数据
+- 一部分有关中国问题的文章
+
+---
+
+# 课程网站
+
+nanowang.coding.me/fin19/
+
+ecnuwang.github.io/fin19/
+
+- 课程通知
+- 课件
+- 上机课内容与代码
+- R软件的相关资料
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function() {
+  var d = document, s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})();</script>
+
+<script>
+(function() {
+  var i, text, code, codes = document.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+})();
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
