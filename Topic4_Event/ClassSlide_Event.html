@@ -188,17 +188,19 @@ Khotari, S. P. &amp; Warner, J. B. (2006). Econometrics of Event Studies. Handbo
 
 ## 原假设下异常收益率的分布
 
+已知 `\(\mathbf{R}^*_i = \mathbf{X}^*_i \theta_i + \epsilon^*_i\)`
+
 `\begin{aligned}
  E[\widehat{\mathbf{AR}}_{i}|\mathbf{X}^*_i] &amp;= E[\mathbf{R}^*_i - \mathbf{X}^*_i \hat{\theta}_i | \mathbf{X}^*_i]\\
  &amp;= E[(\mathbf{R}^*_i - \mathbf{X}^*_i \theta_i) - \mathbf{X}^*_i (\hat{\theta}_i-\theta_i) | \mathbf{X}^*_i] \\
+ &amp;= E[\epsilon^*_i - \mathbf{X}^*_i (\hat{\theta}_i-\theta_i) | \mathbf{X}^*_i] \\
  &amp;= 0.
 \end{aligned}`
 
-
 `\begin{aligned}
  \mathbf{V}_i =&amp; E[\widehat{\mathbf{AR}}_{i} \widehat{\mathbf{AR}}_{i}^T | \mathbf{X}^*_i] \\
- =&amp; E\left[ [\widehat{\mathbf{AR}}_{i} - \mathbf{X}^*_i(\hat{\theta}_i-\theta_i)] [\widehat{\mathbf{AR}}_{i} - \mathbf{X}^*_i(\hat{\theta}_i-\theta_i)]^T | \mathbf{X}^*_i \right]\\
- =&amp; E\left[ \widehat{\mathbf{AR}}_{i} \widehat{\mathbf{AR}}_{i}^T - \widehat{\mathbf{AR}}_{i}(\hat{\theta}_i-\theta_i)^T \mathbf{X}^{*T}_i - \mathbf{X}^*_i(\hat{\theta}_i-\theta_i)\widehat{\mathbf{AR}}_{i}^T \right.\\
+ =&amp; E\left[ [\epsilon^*_i - \mathbf{X}^*_i(\hat{\theta}_i-\theta_i)] [\epsilon^*_i - \mathbf{X}^*_i(\hat{\theta}_i-\theta_i)]^T | \mathbf{X}^*_i \right]\\
+ =&amp; E\left[ \epsilon_i^{*} \epsilon_i^{*T} - \epsilon_i^{*}(\hat{\theta}_i-\theta_i)^T \mathbf{X}^{*T}_i - \mathbf{X}^*_i(\hat{\theta}_i-\theta_i) \epsilon_i^{*T} \right.\\
  &amp; \left. + \mathbf{X}^*_i(\hat{\theta}_i-\theta_i)(\hat{\theta}_i-\theta_i)^T \mathbf{X}^{*T}_i| \mathbf{X}^*_i \right] \\
  =&amp; \mathbf{I} \sigma_{\epsilon_i}^2 + \mathbf{X}^*_i (\mathbf{X}_i^T \mathbf{X}_i)^{-1} \mathbf{X}^{*T}_i \sigma_{\epsilon_i}^2.
 \end{aligned}`
