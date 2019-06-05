@@ -42,7 +42,7 @@ output: html_document
   
 - 事件研究
 
-    - 事件研究方法与实例 [(介绍)](Topic4_Event/ClassSlide_Event.html) [(R code)](Topic4_Event/R_Event.html) [(data)](Topic4_Event/Event_data.zip)
+    - 事件研究方法与实例 [(介绍)](Topic4_Event/ClassSlide_Event.html) [(R code)](Topic4_Event/R_event.html) [(data)](Topic4_Event/Event_data.zip)
     
     - [作业4要求](Topic4_Event/HW4.pdf) [(公司所在地数据)](Topic4_Event/data/location.xlsx) 截止：2019-07-03
 
